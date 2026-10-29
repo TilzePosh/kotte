@@ -157,7 +157,8 @@ namespace kotte
             round_state = RoundState::won;
         }
 
-        for(const BombDetonated& fact : bomb_detonated_facts_){
+        for (std::size_t i = 0; i < bomb_detonated_facts_.size(); ++i) {
+            const BombDetonated fact = bomb_detonated_facts_[i];
             BlastEffect effect;
             effect.remaining_seconds = blast_effect_seconds_;
             effect.tile_centres.reserve(static_cast<std::size_t>(fact.blast_range) * 4 + 1);
@@ -452,7 +453,7 @@ namespace kotte
         bool blocked_by_crate = false;
 
         for(const EntityHandle handle : contacts.entity_handles){
-            const Entity* candidate = entities_.try_get(handle);
+            Entity* candidate = entities_.try_get(handle);
             if(candidate == nullptr
                 || !CheckCollisionRecs(tile_bounds, entity_collision_bounds(*candidate))){
                 continue;
@@ -460,6 +461,18 @@ namespace kotte
 
             switch(candidate->kind){
             case EntityKind::bomb:
+                if (candidate->bomb_state && !candidate->bomb_state->detonation_requested) {
+                    BombState& state = *candidate->bomb_state;
+                    state.detonation_requested = true;
+
+                    bomb_detonated_facts_.push_back({
+                        handle,
+                        state.owner,
+                        candidate->world_position,
+                        state.blast_range
+                        });
+                }
+                break;
             case EntityKind::enemy:
                 destroy_entity_requests_.push_back({handle});
                 break;
