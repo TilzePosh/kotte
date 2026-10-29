@@ -243,6 +243,7 @@ namespace kotte
         const Vector2 proposed_position = player_entity.world_position + axis_displacement;
 
         update_bomb_solidity(player_entity);
+        remove_touched_pickups(player_entity);
 
         // Detect possible contacts using the mover's proposed collision bounds.
         if(entity_movement_is_blocked(player_handle_, proposed_position)){
@@ -267,6 +268,25 @@ namespace kotte
             if (!CheckCollisionRecs(player_bounds, bomb_bounds)) {
                 BombState& state = *bomb->bomb_state;
                 state.bomb_exited = true;
+            }
+        }
+    }
+
+    void Application::remove_touched_pickups(Entity& player_entity) {
+        for (const EntityHandle pickup_handle : pickup_handles_) {
+            const Entity* pickup = entities_.try_get(pickup_handle);
+
+            if (pickup == nullptr) {
+                continue;
+            }
+
+            if (CheckCollisionRecs(
+                entity_collision_bounds(player_entity),
+                entity_collision_bounds(*pickup))) {
+
+                pickups_collected++;
+
+                destroy_entity_requests_.push_back({ pickup_handle });
             }
         }
     }
@@ -326,13 +346,20 @@ namespace kotte
 
             //bomb_exited = false;
 
+            int range = min_bomb_blast_range_ + pickups_collected;
+            if (range > max_bomb_blast_range_) {
+                range = max_bomb_blast_range_;
+            }
+
+            pickups_collected = 0;
+
             const Entity bomb{
                 .kind = EntityKind::bomb,
                 .world_position = request.world_position,
                 .bomb_state = BombState{
                     .owner = request.owner,
                     .fuse_remaining = bomb_fuse_seconds_,
-                    .blast_range = bomb_blast_range_
+                    .blast_range = static_cast<std::uint8_t>(range)
                 }
             };
             const EntityHandle bomb_handle = entities_.create(bomb);
@@ -395,6 +422,9 @@ namespace kotte
         // their iteration dense without teaching each destruction source about
         // every list that happens to reference an entity.
         std::erase_if(enemy_handles_, [this](EntityHandle handle){
+            return !entities_.contains(handle);
+        });
+        std::erase_if(pickup_handles_, [this](EntityHandle handle){
             return !entities_.contains(handle);
         });
         std::erase_if(active_bomb_handles_, [this](EntityHandle handle){
@@ -659,7 +689,7 @@ namespace kotte
         // relocate slot storage. Handles remain valid even if this estimate grows.
         entities_.reserve(map_.tile_count() / 4);
 
-        const Entity player_entity{EntityKind::player, {tile_size_ * 2.5f, tile_size_ * 2.5f}};
+        const Entity player_entity{EntityKind::player, {tile_size_ * 2.5f, tile_size_ * 2.5f}, CardinalDirection::right, std::nullopt, 0 };
         player_handle_ = entities_.create(player_entity);
         spatial_grid_.insert(player_handle_, entity_world_bounds(player_entity));
 
@@ -672,10 +702,18 @@ namespace kotte
                 const std::uint8_t kind_roll = random_.next<20, std::uint8_t>();
                 // Week 3's inert bomb markers are no longer needed: every bomb
                 // now enters the world through the explicit lifetime path.
-                if(kind_roll >= 15 && kind_roll < 19){
+                if (kind_roll >= 15 && kind_roll < 18) {
                     continue;
                 }
-                const EntityKind kind = kind_roll < 15 ? EntityKind::crate : EntityKind::enemy;
+                EntityKind kind =
+                    kind_roll < 15
+                    ? EntityKind::crate
+                    : EntityKind::enemy;
+
+                if (kind_roll >= 19) {
+                    kind = EntityKind::pickup;
+                }
+
                 const Vector2 world_position{
                     static_cast<float>(x * tile_size_ + tile_size_ / 2),
                     static_cast<float>(y * tile_size_ + tile_size_ / 2)
@@ -686,6 +724,9 @@ namespace kotte
 
                 if(kind == EntityKind::enemy){
                     enemy_handles_.push_back(handle);
+                }
+                if (kind == EntityKind::pickup) {
+                    pickup_handles_.push_back(handle);
                 }
             }
         }
@@ -720,6 +761,7 @@ namespace kotte
         player_death_requested_ = false;
 
         enemies_destroyed = 0;
+        pickups_collected = 0;
         //REVIEW: enemies_destroyed survives restart, so a previously won round can immediately become Won again.
         // consider: resetting the kill count and other round-specific values before returning to Playing.
         round_state = RoundState::playing;
@@ -753,6 +795,7 @@ namespace kotte
         case EntityKind::bomb: size = {22.0f, 22.0f}; break;
         case EntityKind::crate: size = {36.0f, 48.0f}; break;
         case EntityKind::enemy: size = {28.0f, 30.0f}; break;
+        case EntityKind::pickup: size = {22.0f, 22.0f}; break;
         }
 
         const Vector2 top_left = entity.world_position - Vector2{size.x / 2.0f, size.y};
@@ -822,12 +865,13 @@ namespace kotte
             //if (candidate == nullptr || (candidate->kind == EntityKind::bomb && bomb_exited)) {
             //    continue;
             //}
+
             
-            /*
-            if(candidate == nullptr || !is_solid(candidate->kind)){
-                continue;
-            }
-            */
+
+            
+            
+            
+            
 
             // Narrow phase: exact-test the remaining solid candidate.
             ++collision_diagnostics_.exact_tests;
@@ -835,6 +879,18 @@ namespace kotte
             if (CheckCollisionRecs(
                     proposed_collision_bounds,
                     entity_collision_bounds(*candidate))) {
+
+                /*
+                const bool player_pickup_contact =
+                    (proposed_entity.kind == EntityKind::player
+                        && candidate->kind == EntityKind::pickup)
+                    ||
+                    (proposed_entity.kind == EntityKind::pickup
+                        && candidate->kind == EntityKind::player);
+                */
+                if (candidate == nullptr || !is_solid(candidate->kind)) {
+                    continue;
+                } 
 
                 blocked = true;
                 ++collision_diagnostics_.contacts;
@@ -878,8 +934,10 @@ namespace kotte
         case EntityKind::enemy:
         case EntityKind::bomb:
             return true;
+        case EntityKind::pickup:
+            return false;
         }
-
+       
         return false;
     }
 
@@ -937,6 +995,7 @@ namespace kotte
         case EntityKind::bomb: return bomb_color_;
         case EntityKind::crate: return crate_color_;
         case EntityKind::enemy: return enemy_color_;
+        case EntityKind::pickup: return pickup_color_;
         }
         return MAGENTA;
     }
