@@ -126,6 +126,7 @@ namespace kotte
         [[nodiscard]] static Vector2 cardinal_vector(CardinalDirection direction) noexcept;
         [[nodiscard]] CardinalDirection different_enemy_direction(CardinalDirection current_direction);
         [[nodiscard]] bool owner_has_active_bomb(EntityHandle owner) const noexcept;
+        [[nodiscard]] size_t count_owners_active_bombs(EntityHandle owner) const noexcept;
         [[nodiscard]] static Vector2 tile_centre(Vector2 world_position) noexcept;
         [[nodiscard]] static Vector2 tile_centre(int column, int row) noexcept;
         [[nodiscard]] static Color entity_color(EntityKind kind) noexcept;
@@ -176,6 +177,7 @@ namespace kotte
         int enemies_destroyed = 0;
         int pickups_collected = 0;
         int must_destroy_to_win_condition = 5;
+        int max_bombs_per_entity_ = 3;
         bool exit_requested_ = false;
     };
 }

@@ -340,7 +340,7 @@ namespace kotte
         for(const PlaceBombRequest& request : place_bomb_requests_){
             const Entity* owner = entities_.try_get(request.owner);
             if(owner == nullptr || owner->kind != EntityKind::player
-                || owner_has_active_bomb(request.owner)){
+                || count_owners_active_bombs(request.owner) >= max_bombs_per_entity_){
                 continue;
             }
 
@@ -689,7 +689,7 @@ namespace kotte
         // relocate slot storage. Handles remain valid even if this estimate grows.
         entities_.reserve(map_.tile_count() / 4);
 
-        const Entity player_entity{EntityKind::player, {tile_size_ * 2.5f, tile_size_ * 2.5f}, CardinalDirection::right, std::nullopt, 0 };
+        const Entity player_entity{EntityKind::player, {tile_size_ * 2.5f, tile_size_ * 2.5f}};
         player_handle_ = entities_.create(player_entity);
         spatial_grid_.insert(player_handle_, entity_world_bounds(player_entity));
 
@@ -966,12 +966,22 @@ namespace kotte
     }
 
     bool Application::owner_has_active_bomb(EntityHandle owner) const noexcept{
-        return std::ranges::any_of(active_bomb_handles_, [this, owner](EntityHandle bomb_handle){
-            const Entity* bomb = entities_.try_get(bomb_handle);
+        return std::ranges::count_if(active_bomb_handles_, [this, owner](EntityHandle bomb_handle) {
+                const Entity* bomb = entities_.try_get(bomb_handle);
             return bomb != nullptr
                 && bomb->bomb_state.has_value()
                 && bomb->bomb_state->owner == owner;
         });
+    }
+
+    size_t Application::count_owners_active_bombs(EntityHandle owner) const noexcept {
+        return std::ranges::count_if(active_bomb_handles_, [this, owner](EntityHandle bomb_handle) {
+                const Entity* bomb = entities_.try_get(bomb_handle);
+
+                return bomb != nullptr
+                    && bomb->bomb_state.has_value()
+                    && bomb->bomb_state->owner == owner;
+            });
     }
 
     Vector2 Application::tile_centre(Vector2 world_position) noexcept{
