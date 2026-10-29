@@ -242,22 +242,33 @@ namespace kotte
         Entity& player_entity = player();
         const Vector2 proposed_position = player_entity.world_position + axis_displacement;
 
+        update_bomb_solidity(player_entity);
+
         // Detect possible contacts using the mover's proposed collision bounds.
         if(entity_movement_is_blocked(player_handle_, proposed_position)){
             // Respond by rejecting only this blocked player axis.
             ++collision_diagnostics_.blocked_moves;
             return;
         }
-        else {
-            //REVIEW: A successful movement step may still leave the owner overlapping the bomb.
-            // consider: only ending the exception once the owner has moved completely clear of that bomb.
-            if (!bomb_exited) {
-                bomb_exited = true;
-            }
-        }
+        
 
         // Accept the clear proposal; grid synchronization happens after both axes.
         player_entity.world_position = proposed_position;
+    }
+
+    void Application::update_bomb_solidity(Entity& player_entity){
+        // Implementation for updating bomb solidity
+        for (const EntityHandle bomb_handle : active_bomb_handles_) {
+            Entity* bomb = entities_.try_get(bomb_handle);
+
+            const Rectangle player_bounds = entity_collision_bounds(player_entity);
+            const Rectangle bomb_bounds = entity_collision_bounds(*bomb);
+
+            if (!CheckCollisionRecs(player_bounds, bomb_bounds)) {
+                BombState& state = *bomb->bomb_state;
+                state.bomb_exited = true;
+            }
+        }
     }
 
     void Application::update_enemies(float delta_time){
@@ -313,7 +324,7 @@ namespace kotte
                 continue;
             }
 
-            bomb_exited = false;
+            //bomb_exited = false;
 
             const Entity bomb{
                 .kind = EntityKind::bomb,
@@ -356,7 +367,7 @@ namespace kotte
         // explicit instead of depending on a forgiving destruction order.
         //REVIEW: This runs every frame, even with no destruction requests, so escape state changes without an actual exit.
         // consider: removing this assignment and updating escape state from the owner's overlap with its particular bomb.
-        bomb_exited = true;
+        //bomb_exited = true;
         std::ranges::sort(destroy_entity_requests_, {}, &DestroyEntityRequest::entity);
         const auto duplicate_tail = std::ranges::unique(
             destroy_entity_requests_, {}, &DestroyEntityRequest::entity);
@@ -585,7 +596,7 @@ namespace kotte
         const double percent_of_world = map_.tile_count() == 0 ? 0.0 : 100.0 * static_cast<double>(tiles_rendered) / static_cast<double>(map_.tile_count());
         diagnostics = std::format(
             "tiles rendered: {} ({:.1f}% of world)", tiles_rendered, percent_of_world);
-        DrawText(diagnostics.c_str(), 10, 10, 20, RAYWHITE);
+        //DrawText(diagnostics.c_str(), 10, 10, 20, RAYWHITE);
 
         diagnostics = std::format(
             "entities: {} visible ({:.1f}% of {}) | {} visibility tests | {} commands",
@@ -594,36 +605,40 @@ namespace kotte
             entities_.live_count(),
             exact_visibility_tests,
             renderer_.command_count());
-        DrawText(diagnostics.c_str(), 10, 34, 20, RAYWHITE);
+        //DrawText(diagnostics.c_str(), 10, 34, 20, RAYWHITE);
 
         diagnostics = std::format(
             "enemies updated: {} | active bombs: {} | blast effects: {}",
             collision_diagnostics_.enemy_updates,
             active_bomb_handles_.size(),
             blast_effects_.size());
-        DrawText(diagnostics.c_str(), 10, 58, 20, RAYWHITE);
+        //DrawText(diagnostics.c_str(), 10, 58, 20, RAYWHITE);
 
         diagnostics = std::format(
             "broad phase: {} candidates | {:.1f}% fewer than full scan",
             collision_diagnostics_.unique_candidates, broad_phase_reduction);
-        DrawText(diagnostics.c_str(), 10, 82, 20, RAYWHITE);
+        //DrawText(diagnostics.c_str(), 10, 82, 20, RAYWHITE);
 
         diagnostics = std::format(
             "narrow phase: {} exact tests | {} contacts",
             collision_diagnostics_.exact_tests,
             collision_diagnostics_.contacts);
-        DrawText(diagnostics.c_str(), 10, 106, 20, RAYWHITE);
+        //DrawText(diagnostics.c_str(), 10, 106, 20, RAYWHITE);
 
         diagnostics = std::format("seed: {}", seed_);
-        DrawText(diagnostics.c_str(), 10, window_.height() - 78, 20, RAYWHITE);
+        //DrawText(diagnostics.c_str(), 10, window_.height() - 78, 20, RAYWHITE);
 
         diagnostics = std::format(
             "world: {} x {} tiles | {} total", map_.width(), map_.height(), map_.tile_count());
-        DrawText(diagnostics.c_str(), 10, window_.height() - 54, 20, RAYWHITE);
+        //DrawText(diagnostics.c_str(), 10, window_.height() - 54, 20, RAYWHITE);
 
         //REVIEW: The HUD shows the round state, but not the objective, progress, or restart key.
         // consider: showing the five-enemy target, current count, and the R key.
-        DrawText("move: WASD/arrows | bomb: Space | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
+        DrawText("move: WASD/arrows | bomb: Space | restart: R | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
+
+        diagnostics = std::format(
+            "Enemies destroyed: {}/{}", enemies_destroyed, must_destroy_to_win_condition);
+        DrawText(diagnostics.c_str(), 10, 10, 20, RAYWHITE);
 
         switch (round_state) {
         case RoundState::playing:
@@ -703,6 +718,8 @@ namespace kotte
         populate_entities();
         initialize_enemies();
         player_death_requested_ = false;
+
+        enemies_destroyed = 0;
         //REVIEW: enemies_destroyed survives restart, so a previously won round can immediately become Won again.
         // consider: resetting the kill count and other round-specific values before returning to Playing.
         round_state = RoundState::playing;
@@ -802,9 +819,9 @@ namespace kotte
 
             //REVIEW: When bomb_exited is true, every mover ignores every bomb, allowing anyone to walk over it.
             // consider: keeping bombs solid except for a particular bomb's owner while its escape exception is active.
-            if (candidate == nullptr || (candidate->kind == EntityKind::bomb && bomb_exited)) {
-                continue;
-            }
+            //if (candidate == nullptr || (candidate->kind == EntityKind::bomb && bomb_exited)) {
+            //    continue;
+            //}
             
             /*
             if(candidate == nullptr || !is_solid(candidate->kind)){
@@ -819,7 +836,21 @@ namespace kotte
                     proposed_collision_bounds,
                     entity_collision_bounds(*candidate))) {
 
+                blocked = true;
                 ++collision_diagnostics_.contacts;
+
+                const bool player_bomb_contact = (proposed_entity.kind == EntityKind::player
+                    && candidate->kind == EntityKind::bomb);
+
+                if (player_bomb_contact) {
+                    if (candidate->bomb_state.has_value()
+                        && candidate->bomb_state->bomb_exited) {
+                        blocked = true;
+                    }
+                    else {
+                        blocked = false;
+                    }
+                }
 
                 // Contact damage depends on the pair, regardless of which entity moved.
                 const bool player_enemy_contact =
@@ -833,7 +864,7 @@ namespace kotte
                     player_death_requested_ = true;
                 }
 
-                blocked = true;
+                
             }
         }
 

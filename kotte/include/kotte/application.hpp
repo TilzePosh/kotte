@@ -90,6 +90,7 @@ namespace kotte
         void update_presentation(float delta_time);
         void update_player(float delta_time);
         void try_move_player(Vector2 axis_displacement);
+        void update_bomb_solidity(Entity& player_entity);
         void update_enemies(float delta_time);
         void queue_bomb_placement();
         void apply_entity_destructions();
@@ -171,9 +172,6 @@ namespace kotte
         int enemies_destroyed = 0;
         int must_destroy_to_win_condition = 5;
         bool exit_requested_ = false;
-        //REVIEW: This flag is shared by all bombs and doesn't identify which owner it applies to.
-        // consider: keeping an escape flag in each BombState and checking that its owner handle
-        // still refers to a live entity before allowing the exception.
-        bool bomb_exited = true;
+        
     };
 }

@@ -27,6 +27,7 @@ namespace kotte
         float fuse_remaining = 0.0f;
         std::uint8_t blast_range = 0;
         bool detonation_requested = false;
+        bool bomb_exited = false;
     };
 
     struct Entity final {
