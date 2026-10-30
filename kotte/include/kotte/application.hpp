@@ -129,7 +129,7 @@ namespace kotte
         [[nodiscard]] size_t count_owners_active_bombs(EntityHandle owner) const noexcept;
         [[nodiscard]] static Vector2 tile_centre(Vector2 world_position) noexcept;
         [[nodiscard]] static Vector2 tile_centre(int column, int row) noexcept;
-        [[nodiscard]] static Color entity_color(EntityKind kind) noexcept;
+        [[nodiscard]] Color entity_color(EntityKind kind) noexcept;
         [[nodiscard]] static float entity_roundness(EntityKind kind) noexcept;
         static constexpr int tile_size_ = 40;
         static constexpr int spatial_cell_tiles_ = 8;
@@ -147,6 +147,7 @@ namespace kotte
             Color{0x42, 0x55, 0x60, 0xff}
         };
         static constexpr Color player_color_{0xf2, 0xc1, 0x4e, 0xff};
+        static constexpr Color player_protected_color_{0xff, 0xff, 0xff, 0xff};
         static constexpr Color bomb_color_{0x20, 0x24, 0x2a, 0xff};
         static constexpr Color blast_color_{0xf2, 0x8f, 0x3b, 0xe8};
         static constexpr Color crate_color_{0xb0, 0x72, 0x3c, 0xff};
@@ -176,6 +177,7 @@ namespace kotte
         bool player_death_requested_ = false;
         int enemies_destroyed = 0;
         int pickups_collected = 0;
+        float protection_timer_seconds = 3;
         int must_destroy_to_win_condition = 5;
         int max_bombs_per_entity_ = 3;
         bool exit_requested_ = false;

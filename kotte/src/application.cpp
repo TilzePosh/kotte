@@ -199,10 +199,22 @@ namespace kotte
     void Application::update_presentation(float delta_time){
         for(BlastEffect& effect : blast_effects_){
             effect.remaining_seconds -= delta_time;
+            
+            
         }
         std::erase_if(blast_effects_, [](const BlastEffect& effect){
             return effect.remaining_seconds <= 0.0f;
         });
+
+        if (Entity* player_entity = entities_.try_get(player_handle_);
+            player_entity && player_entity->protection_timer_remaining) {
+
+            *player_entity->protection_timer_remaining -= delta_time;
+
+            if (*player_entity->protection_timer_remaining <= 0.0f) {
+                player_entity->protection_timer_remaining.reset();
+            }
+        }
 
         update_camera(delta_time);
     }
@@ -263,6 +275,10 @@ namespace kotte
         for (const EntityHandle bomb_handle : active_bomb_handles_) {
             Entity* bomb = entities_.try_get(bomb_handle);
 
+            if (bomb == nullptr || !bomb->bomb_state) {
+                continue;
+            }
+
             const Rectangle player_bounds = entity_collision_bounds(player_entity);
             const Rectangle bomb_bounds = entity_collision_bounds(*bomb);
 
@@ -286,6 +302,7 @@ namespace kotte
                 entity_collision_bounds(*pickup))) {
 
                 pickups_collected++;
+                player_entity.protection_timer_remaining = protection_timer_seconds;
 
                 destroy_entity_requests_.push_back({ pickup_handle });
             }
@@ -481,7 +498,7 @@ namespace kotte
                 blocked_by_crate = true;
                 break;
             case EntityKind::player:
-                if (round_state == RoundState::playing) {
+                if (round_state == RoundState::playing  && player().protection_timer_remaining.value_or(0.0f) <= 0.0f ) {
                     player_death_requested_ = true;
                     break;
                 }
@@ -675,13 +692,31 @@ namespace kotte
             "world: {} x {} tiles | {} total", map_.width(), map_.height(), map_.tile_count());
         //DrawText(diagnostics.c_str(), 10, window_.height() - 54, 20, RAYWHITE);
 
-        //REVIEW: The HUD shows the round state, but not the objective, progress, or restart key.
-        // consider: showing the five-enemy target, current count, and the R key.
+        
         DrawText("move: WASD/arrows | bomb: Space | restart: R | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
-
+        DrawText("Avoid enemies and explosions. Destroy 5 enemies to win", 10, 30, 20, LIGHTGRAY);
         diagnostics = std::format(
             "Enemies destroyed: {}/{}", enemies_destroyed, must_destroy_to_win_condition);
         DrawText(diagnostics.c_str(), 10, 10, 20, RAYWHITE);
+
+        if (Entity* player_entity = entities_.try_get(player_handle_);
+            player_entity && player_entity->protection_timer_remaining) {
+            diagnostics = std::format(
+                "Protection time: {:.2f}", player().protection_timer_remaining.value_or(0.0f));
+        }
+        else {
+            diagnostics = std::format(
+                "Protection time: {:.2f}", (float)(0.0f));
+        }
+        DrawText(diagnostics.c_str(), 10, 58, 20, RAYWHITE);
+
+        diagnostics = std::format(
+            "Bombs placed: {}/{}", count_owners_active_bombs(player_handle_), max_bombs_per_entity_);
+        DrawText(diagnostics.c_str(), 10, 82, 20, RAYWHITE);
+
+        diagnostics = std::format(
+            "Pickups collected: {}", pickups_collected);
+        DrawText(diagnostics.c_str(), 10, 106, 20, RAYWHITE);
 
         switch (round_state) {
         case RoundState::playing:
@@ -702,7 +737,7 @@ namespace kotte
         // relocate slot storage. Handles remain valid even if this estimate grows.
         entities_.reserve(map_.tile_count() / 4);
 
-        const Entity player_entity{EntityKind::player, {tile_size_ * 2.5f, tile_size_ * 2.5f}};
+        const Entity player_entity{EntityKind::player, {tile_size_ * 2.5f, tile_size_ * 2.5f}, CardinalDirection::right, std::nullopt, 0.0f};
         player_handle_ = entities_.create(player_entity);
         spatial_grid_.insert(player_handle_, entity_world_bounds(player_entity));
 
@@ -930,7 +965,9 @@ namespace kotte
                         && candidate->kind == EntityKind::player);
 
                 if (player_enemy_contact) {
-                    player_death_requested_ = true;
+                    if (player().protection_timer_remaining.value_or(0.0f) <= 0.0f) {
+                        player_death_requested_ = true;
+                    }
                 }
 
                 
@@ -1014,7 +1051,16 @@ namespace kotte
 
     Color Application::entity_color(EntityKind kind) noexcept{
         switch(kind){
-        case EntityKind::player: return player_color_;
+        case EntityKind::player: {
+            const Entity* entity = entities_.try_get(player_handle_);
+
+            if (entity && entity->protection_timer_remaining > 0.0f) {
+                return player_protected_color_;
+            }
+            else {
+                return player_color_;
+            }
+        }
         case EntityKind::bomb: return bomb_color_;
         case EntityKind::crate: return crate_color_;
         case EntityKind::enemy: return enemy_color_;

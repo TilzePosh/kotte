@@ -36,5 +36,6 @@ namespace kotte
         Vector2 world_position{};
         CardinalDirection movement_heading = CardinalDirection::right;
         std::optional<BombState> bomb_state;
+        std::optional<float> protection_timer_remaining;
     };
 }
