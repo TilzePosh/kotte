@@ -748,6 +748,8 @@ namespace kotte
                     continue;
                 }
 
+                
+
                 const std::uint8_t kind_roll = random_.next<20, std::uint8_t>();
                 // Week 3's inert bomb markers are no longer needed: every bomb
                 // now enters the world through the explicit lifetime path.
@@ -763,6 +765,11 @@ namespace kotte
                     kind = EntityKind::pickup;
                 }
 
+                
+                if (kind == EntityKind::enemy && y == 1) {
+                    continue;
+                }
+                
                 const Vector2 world_position{
                     static_cast<float>(x * tile_size_ + tile_size_ / 2),
                     static_cast<float>(y * tile_size_ + tile_size_ / 2)
@@ -861,6 +868,7 @@ namespace kotte
         case EntityKind::bomb: size = {18.0f, 12.0f}; break;
         case EntityKind::crate: size = {32.0f, 32.0f}; break;
         case EntityKind::enemy: size = {24.0f, 14.0f}; break;
+        case EntityKind::pickup: size = { 18.0f, 12.0f }; break;
         }
 
         const Vector2 top_left = entity.world_position - Vector2{size.x / 2.0f, size.y};
