@@ -73,12 +73,7 @@ namespace kotte
         frame_actions_.place_bomb = IsKeyPressed(KEY_SPACE);
 
         if (IsKeyPressed(KEY_R)) {
-            //REVIEW: Restart rebuilds the world during input collection, outside the
-            // structural-mutation phase. It can also allocate; if allocation throws,
-            // this noexcept function would terminate the program.
-            // consider: setting a restart flag here and handling it in the defined
-            // mutation phase, giving restart priority over ordinary gameplay that frame.
-            restart_round();
+            restart_requested_ = true;
             return;
         }
 
@@ -117,9 +112,11 @@ namespace kotte
     }
 
     void Application::update_timed_gameplay(float delta_time){
-        //REVIEW: Existing bombs still tick and can destroy entities after Won/Lost; is that the intended end-state policy?
-        // consider: only updating bomb timers while the round is Playing.
-        // This list is independent of camera queries, so off-screen fuses advance.
+        
+        if (round_state != RoundState::playing) {
+            return;
+        }
+
         for(const EntityHandle bomb_handle : active_bomb_handles_){
             Entity* bomb = entities_.try_get(bomb_handle);
             if(bomb == nullptr || !bomb->bomb_state.has_value()
@@ -149,12 +146,13 @@ namespace kotte
 
     void Application::resolve_gameplay_facts(){
 
-        //REVIEW: This can overwrite Lost with Won, and it runs before this frame's deaths update the kill count.
-        // consider: deciding the result after applying deaths and destruction,
-        // and only while Playing. Choose which result takes priority if the
-        // player dies and completes the objective in the same frame.
+        if (player_death_requested_) {
+            round_state = RoundState::lost;
+            return;
+        }
         if (enemies_destroyed >= must_destroy_to_win_condition) {
             round_state = RoundState::won;
+            return;
         }
 
         for (std::size_t i = 0; i < bomb_detonated_facts_.size(); ++i) {
@@ -185,6 +183,10 @@ namespace kotte
 
     void Application::apply_structural_mutations(){
         // Entity storage and every derived index change only at this boundary.
+        if (restart_requested_) {
+            restart_round();
+            return;;
+        }
         apply_player_death();
         apply_entity_destructions();
 
@@ -396,7 +398,7 @@ namespace kotte
             return;
         }
 
-        player_death_requested_ = false;
+        
 
         if (round_state != RoundState::playing) {
             return;
@@ -412,7 +414,6 @@ namespace kotte
         // explicit instead of depending on a forgiving destruction order.
         //REVIEW: This runs every frame, even with no destruction requests, so escape state changes without an actual exit.
         // consider: removing this assignment and updating escape state from the owner's overlap with its particular bomb.
-        //bomb_exited = true;
         std::ranges::sort(destroy_entity_requests_, {}, &DestroyEntityRequest::entity);
         const auto duplicate_tail = std::ranges::unique(
             destroy_entity_requests_, {}, &DestroyEntityRequest::entity);
@@ -694,10 +695,10 @@ namespace kotte
 
         
         DrawText("move: WASD/arrows | bomb: Space | restart: R | quit: Q/Escape", 10, window_.height() - 30, 20, LIGHTGRAY);
-        DrawText("Avoid enemies and explosions. Destroy 5 enemies to win", 10, 30, 20, LIGHTGRAY);
+        DrawText("Avoid enemies and explosions. Destroy 5 enemies to win. Collect pickups for bigger blasts and protection", 10, 0, 20, LIGHTGRAY);
         diagnostics = std::format(
             "Enemies destroyed: {}/{}", enemies_destroyed, must_destroy_to_win_condition);
-        DrawText(diagnostics.c_str(), 10, 10, 20, RAYWHITE);
+        DrawText(diagnostics.c_str(), 10, 30, 20, RAYWHITE);
 
         if (Entity* player_entity = entities_.try_get(player_handle_);
             player_entity && player_entity->protection_timer_remaining) {
@@ -792,6 +793,7 @@ namespace kotte
 
     void Application::restart_round()
     {
+        restart_requested_ = false;
         enemy_handles_.clear();
         active_bomb_handles_.clear();
         place_bomb_requests_.clear();
@@ -807,11 +809,10 @@ namespace kotte
         populate_entities();
         initialize_enemies();
         player_death_requested_ = false;
+       
 
         enemies_destroyed = 0;
         pickups_collected = 0;
-        //REVIEW: enemies_destroyed survives restart, so a previously won round can immediately become Won again.
-        // consider: resetting the kill count and other round-specific values before returning to Playing.
         round_state = RoundState::playing;
 
     }
@@ -908,20 +909,6 @@ namespace kotte
 
             const Entity* candidate = entities_.try_get(candidate_handle);
 
-            //REVIEW: When bomb_exited is true, every mover ignores every bomb, allowing anyone to walk over it.
-            // consider: keeping bombs solid except for a particular bomb's owner while its escape exception is active.
-            //if (candidate == nullptr || (candidate->kind == EntityKind::bomb && bomb_exited)) {
-            //    continue;
-            //}
-
-            
-
-            
-            
-            
-            
-
-            // Narrow phase: exact-test the remaining solid candidate.
             ++collision_diagnostics_.exact_tests;
             
             if (CheckCollisionRecs(

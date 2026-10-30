@@ -180,6 +180,7 @@ namespace kotte
         float protection_timer_seconds = 3;
         int must_destroy_to_win_condition = 5;
         int max_bombs_per_entity_ = 3;
+        bool restart_requested_ = false;
         bool exit_requested_ = false;
     };
 }
