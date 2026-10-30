@@ -1,64 +1,46 @@
-# Bomberman World — [your game title]
+Bomberman World — Pick and Destroy
 
-**Student:** [your name]
+**Student:** Ilze Poskute
 
 > Replace the prompts below and remove these instructions. Keep answers brief. Your implementation explanations and reflection belong in the presentation; you do not need to write them out here. Complete the final section only if seeking Pass with Distinction (VG).
 
 ## How to play
-
-- **Controls:** [movement, bombs, restart, and any extension controls]
-- **Objective and rules:** [how to win/lose; which result wins if both happen together; any extension rules needed to understand the game]
-- **Configurations / demo setup:** [how to select gameplay/stress configurations and use any special setup or debug keys; write “default” where appropriate]
+- **Controls:**
+	Movement- WASD
+	Bombs- Space
+	Restart- R key
+	Quit- Q or Esc
+ 
+- **Objective and rules:**
+	How to win: Destroy 5 enemies with bomb explosions 
+	How to lose: Come in contact with one of the enemies or explosion blasts
+	Pickups: One pickup protects the player from enemies and blasts for 3 seconds and increases the next explosion size. Default explosion size is 2 tiles, but each pickup adds one more tile in length. Max explosion size is 5 tiles. Once the bomb is placed, the collected pickup number goes back to 0 and the explosion size becomes 2 tiles again.
+- **Configurations:** 
+	Run the executable with the executable (default configurations)
+	Exit with Q ir Esc
+	Map is procedurally and automatically generated
+	
 
 ## Features and validation
 
-(delete this pre-amble before submitting the assignment) Complete the five required features and three extensions of your choice. For each row, document **at least one useful check: what you tested, what you observed, and how the result compares with the expected behaviour**. One or two sentences per feature are enough. Choose a check that could reveal a mistake, such as a boundary case or interaction.
-
-Use the practical checks in the assignment to validate the acceptance conditions during development; this table is a small sample of that work. Manual play in a small, repeatable setup is sufficient. You can also use a debugger, temporary logging, or small scenarios set up in code. Screenshots, recordings, automated tests etc are welcome, but not required. Be ready to explain the relevant rules in your code.
-
 | Feature | Check, observed result, and expected behaviour |
 | --- | --- |
-| 1. Player damage and death | [what I tested, what I observed, and whether it matched the expected behaviour] |
-| 2. Round states and objective | [what I tested, what I observed, and whether it matched the expected behaviour] |
-| 3. Safe restart | [what I tested, what I observed, and whether it matched the expected behaviour] |
-| 4. Solid bombs with owner escape | [what I tested, what I observed, and whether it matched the expected behaviour] |
-| 5. Blast-range pickup | [what I tested, what I observed, and whether it matched the expected behaviour] |
-| [# and name of chosen extension 1] | [what I tested, what I observed, and whether it matched the expected behaviour] |
-| [# and name of chosen extension 2] | [what I tested, what I observed, and whether it matched the expected behaviour] |
-| [# and name of chosen extension 3] | [what I tested, what I observed, and whether it matched the expected behaviour] |
+| 1. Player damage and death | Bypassed and made contact with enemies from different sides and bomb explosions in different positions as well as entering it after explosion. The player dies (change of gameplay state) only after the visible contact is made and the state remains "lost" until restart. This matches the behavior expectations |
+| 2. Round states and objective | I put HUD that informs about the game state, amount of enemies that were destroyed and tried reaching both winning condition (destroying 5 enemies with bombs) and losing condition (touching an enemy or blast). In both cases, the HUD showed immediate change in game state and increasement of destroyed enemy number. The gameplay stops and the camera remains in place despite the player being gone. This matches the expectations|
+| 3. Safe restart | Tried restarting the game after winning, after losing, after placing bombs and waiting for the explosions.  The count of destroyed enemies, protection time, collected pickup count was displayed by HUD. Each time a new map was generated, old graphics were removed and the HUD displayed reset values. This matches the behavior expectations. Only improvement would be keeping the same map for each round|
+| 4. Solid bombs with owner escape | I planted bombs and tried to move the player, step back on the bombs before and after detonation and see how the enemies interact with it. Enemies never entered a bomb, player could not enter after stepping off. Entities could enter the area again after the bomb detonated. This matches the behavior expectations |
+| 5. Blast-range pickup | I passed by the pickups, collected them, tried to get back on the same area after collecting them, tried planting bombs before collecting pickups and then each time with an increasing number of pickups (1, 2, 3, 4), I also observed the pickup count in HUD. One pickup could be collected only once, they increased the blast range by 1 tile and it went up to 5 possible blast tiles. This behavior matches the expectations |
+| 6. Multiple bombs per owner | Tried placing bombs multiple times (before and after any of them detonated) and viewed the HUD. They player could only place 3 bombs and was allowed to place more only when one of them detonated. HUD kept accurate count of the bombs. This matches the expected behavior |
+| 7. Chain reactions | I tried placing multiple bombs near each other and observe HUD bomb count. Each bomb affected by a blast also detonated, they are no longer counted. This matches the expected behavior|
+| 8. Shield or temporary invulnerability | I tried picking up a pickup and afterwards collide with entities and explosions (before 3 second timer ended and afterwards). I also viewed the HUD timer and the color of the player. Once the player picked up a pickup it turned white for 3 seconds and for that time was not affected by the threats. Afterwards, the player takes damage as usual until it picks up another pickup. This matches the expected behavior  |
 
 Example: “I ended a round with live bombs and restarted three times to check that old-round state was cleared. No old explosions appeared, and bomb capacity reset each time.” Report your actual results, including any failures or remaining limitations; stating that something “works” does not describe a check.
 
-**Known issues:** [remaining problems and how to encounter them, or “None known after testing”]
+**Known issues:** None known after testing
 
 ## Sources and assistance
 
 This project builds on the shared Kotte foundations.
-
-[Briefly identify meaningful external code/resources, discussion or collaboration, and AI assistance. Link to sources where relevant, say what they contributed, and explain what you checked yourself. State “None beyond the course material” if applicable. No prompt transcript or activity diary is needed. Retain required licence/attribution notices.]
-
-## Architectural investigation — VG only
-
-Delete this section for a G submission. For VG, pose a focused engineering question about one decision in your implementation, investigate it, and draw a conclusion from evidence. Documenting the explanation already required for G is not enough. Aim for half a page to one page, excluding small tables, diagrams, or code excerpts. You can use the same decision in your presentation too.
-
-### Decision
-
-[State the question you are investigating and the implementation decision it concerns. Describe your current approach and a plausible alternative. Identify the relevant code. You do not need to implement the alternative.]
-
-### Method
-
-[How did you investigate the decision? Give enough detail to reproduce the key observation: setup, input, configuration/seed, and the test, trace, debugger inspection, or other method used.]
-
-### Evidence
-
-[What did you actually observe in your game? Include the relevant result or a small excerpt, table, or link to supporting material.]
-
-### Interpretation
-
-[Explain why it happened using the relevant code or architecture. Analyse at least one edge case, failure, defect, limitation, or trade-off illustrated by the investigation. Discuss relevant consequences for correctness, maintainability, performance, and/or scalability; you do not need to cover all four.]
-
-### Conclusion
-
-[When is your approach appropriate, what limits it, and when might an alternative become preferable? Base the conclusion on your evidence. Confirming that the current approach is suitable is a valid result.]
-
-<!-- Submission: commit and push this README with your source to GitHub or the internal Gitea server. Submit the final commit link and a runnable Release ZIP from that version in Studium. Ensure the teacher can access the repository throughout assessment. -->
+Feedback was received from Ulf Benjaminsson.
+Research about coding was done using https://www.w3schools.com/
+AI chatbot (Gemini) and Visual Studio's copilot was used to investigate errors and warnings
