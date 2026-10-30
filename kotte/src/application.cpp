@@ -77,6 +77,25 @@ namespace kotte
             return;
         }
 
+        //Configuration for losing
+        if (IsKeyPressed(KEY_L)) {
+            player_death_requested_ = true;
+            return;
+        }
+
+        //Configuration for winning
+        if (IsKeyPressed(KEY_V)) {
+            enemies_destroyed = must_destroy_to_win_condition;
+            return;
+        }
+
+        //Configuration for max pickups
+        if (IsKeyPressed(KEY_M)) {
+            pickups_collected = max_bomb_blast_range_;
+            player().protection_timer_remaining = protection_timer_seconds;
+            return;
+        }
+
         Vector2& movement_direction = frame_actions_.player_movement_direction;
         if(IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)){
             movement_direction.x -= 1.0f;
@@ -183,6 +202,7 @@ namespace kotte
 
     void Application::apply_structural_mutations(){
         // Entity storage and every derived index change only at this boundary.
+        
         if (restart_requested_) {
             restart_round();
             return;;
@@ -199,6 +219,9 @@ namespace kotte
     }
 
     void Application::update_presentation(float delta_time){
+        if (round_state != RoundState::playing) {
+            return;
+        }
         for(BlastEffect& effect : blast_effects_){
             effect.remaining_seconds -= delta_time;
             

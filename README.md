@@ -18,14 +18,16 @@ Bomberman World — Pick and Destroy
 - **Configurations:** 
 	Run the executable with the executable (default configurations)
 	Exit with Q ir Esc
-	Map is procedurally and automatically generated
+	L- automatically commands players death
+	V- automatically increases maximum destroyed enemies
+	M- automatically increases maximum pickups (the maximum explosion tile length) and adds 3 seconds to the protector timer
 	
 
 ## Features and validation
 
 | Feature | Check, observed result, and expected behaviour |
 | --- | --- |
-| 1. Player damage and death | Bypassed and made contact with enemies from different sides and bomb explosions in different positions as well as entering it after explosion. The player dies (change of gameplay state) only after the visible contact is made and the state remains "lost" until restart. This matches the behavior expectations |
+| 1. Player damage and death | Bypassed and made contact with enemies from different sides and bomb explosions in different positions as well as entering it after explosion. The player dies (change of gameplay state) only after the visible contact is made and the state remains "lost" until restart. This matches the behavior expectations. |
 | 2. Round states and objective | I put HUD that informs about the game state, amount of enemies that were destroyed and tried reaching both winning condition (destroying 5 enemies with bombs) and losing condition (touching an enemy or blast). In both cases, the HUD showed immediate change in game state and increasement of destroyed enemy number. The gameplay stops and the camera remains in place despite the player being gone. This matches the expectations|
 | 3. Safe restart | Tried restarting the game after winning, after losing, after placing bombs and waiting for the explosions.  The count of destroyed enemies, protection time, collected pickup count was displayed by HUD. Each time a new map was generated, old graphics were removed and the HUD displayed reset values. This matches the behavior expectations. Only improvement would be keeping the same map for each round|
 | 4. Solid bombs with owner escape | I planted bombs and tried to move the player, step back on the bombs before and after detonation and see how the enemies interact with it. Enemies never entered a bomb, player could not enter after stepping off. Entities could enter the area again after the bomb detonated. This matches the behavior expectations |
