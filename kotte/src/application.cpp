@@ -14,12 +14,16 @@ namespace kotte
         int width,
         int height,
         std::string_view title,
+        int tile_map_width,
+        int tile_map_height,
         std::uint64_t seed,
         int target_fps)
         : window_{width, height, title, target_fps}
         , camera_{window_.size()}
         , random_{seed}
-        , map_{make_room(200, 120, random_)}
+        , room_width_{tile_map_width}
+        , room_height_{tile_map_height}
+        , map_{make_room(tile_map_width, tile_map_height, random_)}
         , spatial_grid_{{
             static_cast<float>(map_.width() * tile_size_),
             static_cast<float>(map_.height() * tile_size_)}, spatial_cell_size_}
