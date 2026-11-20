@@ -11,7 +11,7 @@ option(KOTTE_BUILD_TESTS "Build the kotte test suite" ON)
 # Mirrors the WarningLevel4 / TreatWarningAsError settings used by the MSVC
 # project files, translated to their GCC/Clang equivalents.
 function(kotte_set_project_warnings target)
-    target_compile_options(${target} PRIVATE
+    target_link_libraries(kotte_lib PUBLIC raylib cpp_prngs nlohmann_json nlohmann_json_schema_validator)
         $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
         $<$<AND:$<CXX_COMPILER_ID:GNU,Clang,AppleClang>,$<BOOL:${KOTTE_WARNINGS_AS_ERRORS}>>:-Werror>
     )
@@ -19,10 +19,23 @@ endfunction()
 # --- vendor/cpp_prngs: header-only library -----------------------------
 add_library(cpp_prngs INTERFACE)
 target_include_directories(cpp_prngs INTERFACE ${CMAKE_SOURCE_DIR}/vendor/cpp_prngs/include)
-
 # --- vendor/nlohmann_json: header-only library ---------------------------
 add_library(nlohmann_json INTERFACE)
 target_include_directories(nlohmann_json INTERFACE ${CMAKE_SOURCE_DIR}/vendor/nlohmann_json/include)
+
+# --- vendor/json_schema_validator -----------------------------------------
+# Unlike nlohmann_json, this one isn't header-only, so its sources are
+# compiled into a small static library.
+add_library(nlohmann_json_schema_validator STATIC
+    vendor/json_schema_validator/src/json-patch.cpp
+    vendor/json_schema_validator/src/json-schema-draft7.json.cpp
+    vendor/json_schema_validator/src/json-uri.cpp
+    vendor/json_schema_validator/src/json-validator.cpp
+    vendor/json_schema_validator/src/smtp-address-validator.cpp
+    vendor/json_schema_validator/src/string-format-check.cpp
+)
+target_include_directories(nlohmann_json_schema_validator PUBLIC ${CMAKE_SOURCE_DIR}/vendor/json_schema_validator/src)
+target_link_libraries(nlohmann_json_schema_validator PUBLIC nlohmann_json)
 
 # --- vendor/raylib -------------------------------------------------------
 # The repository only ships prebuilt Windows binaries for raylib, so on

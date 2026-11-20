@@ -1,5 +1,22 @@
 {
-    "tile_map_width": 17,
-    "tile_map_height": 13,
-    "seed": 323453473861
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Kotte config",
+    "type": "object",
+    "properties": {
+        "tile_map_width": {
+            "type": "integer",
+            "minimum": 10,
+            "maximum": 1000
+        },
+        "tile_map_height": {
+            "type": "integer",
+            "minimum": 10,
+            "maximum": 1000
+        },
+        "seed": {
+            "type": "integer",
+            "minimum": 1
+        }
+    },
+    "required": ["tile_map_width", "tile_map_height", "seed"]
 }
